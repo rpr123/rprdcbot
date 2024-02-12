@@ -1,0 +1,51 @@
+import discord
+from discord.ext import commands
+import logging
+import os
+from datetime import datetime
+import pytz
+
+TOKEN = 'MTIwNDczMjAxNzE0MTYxMjU1NA.GGdfz2.7KTk87nzqW76yRtXsqn0pwtLHoirSgfLdqQquI'
+
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+kor_timezone = pytz.timezone('Asia/Seoul')
+
+current_date=datetime.now(kor_timezone)
+current_time=current_date.strftime('%Y%m%d')
+
+logging.basicConfig(filename=f'bot_log_{current_time}.log', level=logging.INFO, format='%(asctime)s: %(message)s')
+
+
+@bot.event
+async def on_ready():
+    log_message=(f'Login bot: {bot.user}' )
+    print(log_message)
+    logging.info(log_message)
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if after.channel is not None:
+        log_message=(f'{member.display_name} enter {after.channel.name}')
+        print(log_message)
+        logging.info(log_message)
+    if before.channel is not None:
+        log_message=(f'{member.display_name} leave {before.channel.name}')
+        print(log_message)
+        logging.info(log_message)
+
+
+@bot.command()
+async def log(ctx,date : str = None):
+    if date is None:
+        with open('bot_logs.txt','r',encoding='cp949') as log_file:
+            logs = log_file.read()
+            await ctx.send(f'```{logs}```')
+    else:
+        try:
+            with open(f'bot_log_{date}.log', 'r', encoding='cp949') as log_file:
+                logs = log_file.read()
+                await ctx.send(f'```{logs}```')
+        except FileNotFoundError:
+            await ctx.send('Logs file not found.')
