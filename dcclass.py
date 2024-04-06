@@ -6,26 +6,23 @@ class memb:
         self.name=_name
         self.userid=_id
         self.time=timedelta(0)
-        self.ing=False
+        self._ing=False
         self.timestamp=datetime.now()
         
     def update_in(self): #입장
-        self.ing=True
+        self._ing=True
         self.timestamp=datetime.now()
 
     def update_out(self): #퇴장
-        self.ing=False
+        self._ing=False
         self.time += datetime.now() -self.timestamp
 
     def printing(self): # "접속 시간 : 닉네임(id)" 리턴
         rttime = (str(self.time).split('.')[0])
         return f"{rttime} : {self.name}({self.userid})\n"     
-    
-    def reset(self):
-        self.time=timedelta(0)
 
-    def rting(self):#접속중 정보
-        return self.ing
+    def ing(self):#접속중 정보
+        return self._ing
 
 class membermanager:
     def __init__(self):
@@ -34,7 +31,7 @@ class membermanager:
 
     def update(self):
         for _id in self.members:
-            if(self.members[_id].rting):
+            if self.members[_id].ing():
                 self.members[_id].update_out()
                 self.members[_id].update_in() 
 
@@ -42,9 +39,7 @@ class membermanager:
         self.timestamp=datetime.now()
 
         for _id in self.members:
-            if(self.members[_id].rting):
-                self.members[_id].reset()
-            else:
+            if not self.members[_id].ing():
                 del self.members[_id]
 
     def add(self,mem): 
@@ -62,6 +57,8 @@ class membermanager:
 
         elif(inout=='in'):
                 self.add(memb(_name, _id))
+                self.members[_id].update_in()
+          
 
     def printing(self):
         self.sorting()
@@ -72,3 +69,4 @@ class membermanager:
 
     def sorting(self): # 접속 시간 내림차순 정렬
         self.members= {k: v for k, v in sorted(self.members.items(), key=lambda item: item[1].time, reverse=True)}
+    
