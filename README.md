@@ -29,6 +29,8 @@ Server managers can migrate statistics with these slash commands:
 - `/get_json`: Download the current server's latest statistics.
 - `/upload_json file:<stats.json>`: Replace the current server's statistics with a UTF-8 JSON backup (maximum 5 MB).
 
+Annual settlement runs on January 1 after the December monthly settlement. It is calculated only from each saved month's `total` values, without adding weekly records again.
+
 ## Run
 
 ```powershell

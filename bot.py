@@ -113,6 +113,8 @@ async def midnight_check():
             await settlement_channel.send(manager.print_week())
         if now.day == 1:
             await settlement_channel.send(manager.print_month())
+            if now.month == 1:
+                await settlement_channel.send(manager.print_year())
 
 
 @tasks.loop(minutes=5)

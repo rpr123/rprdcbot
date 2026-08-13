@@ -209,6 +209,24 @@ class MemberManager:
         self.save_stats()
         return message
 
+    def print_year(self):
+        base = datetime.now() - timedelta(days=1)
+        year_key = f"{base.year}년"
+        start_str = base.replace(month=1, day=1).strftime("%Y-%m-%d")
+        end_str = base.replace(month=12, day=31).strftime("%Y-%m-%d")
+
+        year_data = self.stats.get(year_key, {})
+        total_data = sum_month_totals(year_data)
+
+        message = f"{year_key} 연간 결산 ({start_str} ~ {end_str})\n"
+        message += "##########################################\n"
+        message += format_stats_body(
+            total_data,
+            empty_message="이번 해 기록된 활동이 없습니다.",
+        )
+        message += "\n##########################################"
+        return message
+
     def reset(self):
         self.timestamp = datetime.now()
         self.timestamp_recently = datetime.now()
@@ -253,6 +271,7 @@ class MemberManager:
     printing = print_current
     printing_week = print_week
     printing_month = print_month
+    printing_year = print_year
 
 
 def sort_stats_by_time(stats):
@@ -263,6 +282,24 @@ def sort_stats_by_time(stats):
             reverse=True,
         )
     )
+
+
+def sum_month_totals(year_data):
+    year_total = {}
+
+    for month in range(1, 13):
+        month_data = year_data.get(f"{month}월", {})
+        for user_id, user_data in month_data.get("total", {}).items():
+            if user_id not in year_total:
+                year_total[user_id] = {
+                    "time": 0,
+                    "nickname": user_data["nickname"],
+                }
+
+            year_total[user_id]["time"] += int(user_data["time"])
+            year_total[user_id]["nickname"] = user_data["nickname"]
+
+    return sort_stats_by_time(year_total)
 
 
 def validate_stats(stats):

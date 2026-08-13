@@ -2,10 +2,11 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import timedelta
+from copy import deepcopy
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from voice_tracker import MemberManager, MemberRecord, validate_stats
+from voice_tracker import MemberManager, MemberRecord, sum_month_totals, validate_stats
 
 
 class ValidateStatsTests(unittest.TestCase):
@@ -89,6 +90,54 @@ class ReplaceStatsTests(unittest.TestCase):
                 manager.replace_stats({"replacement": {}})
 
         self.assertEqual(manager.stats, {"existing": {}})
+
+
+class YearSettlementTests(unittest.TestCase):
+    def test_sums_only_month_totals(self):
+        year_total = sum_month_totals(
+            {
+                "1월": {
+                    "total": {
+                        "user-a": {"time": 10, "nickname": "이전 이름"},
+                    },
+                    "1주차": {
+                        "user-a": {"time": 999, "nickname": "이전 이름"},
+                    },
+                },
+                "2월": {
+                    "total": {
+                        "user-a": {"time": 20, "nickname": "현재 이름"},
+                        "user-b": {"time": 5, "nickname": "다른 사용자"},
+                    },
+                },
+            }
+        )
+
+        self.assertEqual(year_total["user-a"]["time"], 30)
+        self.assertEqual(year_total["user-a"]["nickname"], "현재 이름")
+        self.assertEqual(year_total["user-b"]["time"], 5)
+        self.assertNotEqual(year_total["user-a"]["time"], 1029)
+
+    def test_print_year_uses_previous_year_without_mutating_stats(self):
+        manager = MemberManager(file_name="unused.json")
+        manager.stats = {
+            "2025년": {
+                "12월": {
+                    "total": {
+                        "user": {"time": 65, "nickname": "테스터"},
+                    },
+                },
+            }
+        }
+        original_stats = deepcopy(manager.stats)
+
+        with patch("voice_tracker.datetime") as mocked_datetime:
+            mocked_datetime.now.return_value = datetime(2026, 1, 1)
+            message = manager.print_year()
+
+        self.assertIn("2025년 연간 결산 (2025-01-01 ~ 2025-12-31)", message)
+        self.assertIn("0:01:05 : 테스터(user)", message)
+        self.assertEqual(manager.stats, original_stats)
 
 
 if __name__ == "__main__":
