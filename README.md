@@ -7,7 +7,7 @@ Discord voice channel activity tracker that records how long members stay in voi
 - `bot.py`: Discord bot entry point.
 - `voice_tracker.py`: Member time tracking, weekly/monthly summary, and JSON persistence logic.
 - `guild_settings.py`: Per-server channel settings storage.
-- `.env`: Local bot settings. This file is ignored by Git.
+- `.env.example`: Environment variable template. Copy it to `.env` for local use.
 
 ## Environment
 
