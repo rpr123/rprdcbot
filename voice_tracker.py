@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime, timedelta
 import json
 import os
@@ -60,21 +61,44 @@ class MemberRecord:
 
 
 class MemberManager:
-    def __init__(self):
+    def __init__(self, file_name=FILE_NAME):
+        self.file_name = file_name
         self.members = {}
         self.timestamp = datetime.now()
         self.timestamp_recently = datetime.now()
         self.stats = self.load_stats()
 
     def load_stats(self):
-        if os.path.exists(FILE_NAME):
-            with open(FILE_NAME, "r", encoding="utf-8") as file:
+        if os.path.exists(self.file_name):
+            with open(self.file_name, "r", encoding="utf-8") as file:
                 return json.load(file)
         return {}
 
     def save_stats(self):
-        with open(FILE_NAME, "w", encoding="utf-8") as file:
-            json.dump(self.stats, file, indent=4, ensure_ascii=False)
+        self._write_stats(self.stats)
+
+    def replace_stats(self, stats):
+        validate_stats(stats)
+
+        replacement = deepcopy(stats)
+        self._write_stats(replacement)
+
+        self.stats = replacement
+        for member in self.members.values():
+            member.time_week = timedelta(0)
+            member.time_month = timedelta(0)
+
+        self.load_in_progress_data()
+
+    def _write_stats(self, stats):
+        temporary_file_name = f"{self.file_name}.tmp"
+        try:
+            with open(temporary_file_name, "w", encoding="utf-8") as file:
+                json.dump(stats, file, indent=4, ensure_ascii=False)
+            os.replace(temporary_file_name, self.file_name)
+        finally:
+            if os.path.exists(temporary_file_name):
+                os.remove(temporary_file_name)
 
     def update(self):
         self.timestamp_recently = datetime.now()
@@ -239,6 +263,68 @@ def sort_stats_by_time(stats):
             reverse=True,
         )
     )
+
+
+def validate_stats(stats):
+    if not isinstance(stats, dict):
+        raise ValueError("최상위 JSON 값은 객체여야 합니다.")
+
+    for year_key, year_data in stats.items():
+        if not isinstance(year_key, str):
+            raise ValueError("통계 키는 문자열이어야 합니다.")
+
+        if year_key == "_in_progress":
+            _validate_in_progress_stats(year_data)
+            continue
+
+        if not isinstance(year_data, dict):
+            raise ValueError(f"{year_key} 값은 객체여야 합니다.")
+
+        for month_key, month_data in year_data.items():
+            if not isinstance(month_data, dict):
+                raise ValueError(f"{year_key} {month_key} 값은 객체여야 합니다.")
+
+            for period_key, period_data in month_data.items():
+                _validate_period_stats(
+                    period_data,
+                    f"{year_key} {month_key} {period_key}",
+                )
+
+
+def _validate_period_stats(period_data, location):
+    if not isinstance(period_data, dict):
+        raise ValueError(f"{location} 값은 객체여야 합니다.")
+
+    for user_id, user_data in period_data.items():
+        if not isinstance(user_data, dict):
+            raise ValueError(f"{location}의 {user_id} 기록은 객체여야 합니다.")
+        _validate_non_negative_integer(user_data.get("time"), f"{location}의 time")
+        if not isinstance(user_data.get("nickname"), str):
+            raise ValueError(f"{location}의 nickname은 문자열이어야 합니다.")
+
+
+def _validate_in_progress_stats(in_progress):
+    if not isinstance(in_progress, dict):
+        raise ValueError("_in_progress 값은 객체여야 합니다.")
+
+    for user_id, user_data in in_progress.items():
+        if not isinstance(user_data, dict):
+            raise ValueError(f"_in_progress의 {user_id} 기록은 객체여야 합니다.")
+        if not isinstance(user_data.get("name"), str):
+            raise ValueError("_in_progress의 name은 문자열이어야 합니다.")
+        _validate_non_negative_integer(
+            user_data.get("time_week"),
+            "_in_progress의 time_week",
+        )
+        _validate_non_negative_integer(
+            user_data.get("time_month"),
+            "_in_progress의 time_month",
+        )
+
+
+def _validate_non_negative_integer(value, location):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{location}은 0 이상의 정수여야 합니다.")
 
 
 def format_stats_body(stats, empty_message):
